@@ -109,6 +109,26 @@ zip_source_file_create(const char *fname, zip_uint64_t start, zip_int64_t length
     return zip_source_file_common_new(fname, NULL, start, length, NULL, &ops_stdio_named, NULL, error);
 }
 
+ZIP_EXTERN zip_source_t *
+zip_source_filep(zip_t *za, FILE *file, zip_uint64_t start, zip_int64_t len) {
+    if (za == NULL) {
+        return NULL;
+    }
+
+    return zip_source_filep_create(file, start, len, &za->error);
+}
+
+
+ZIP_EXTERN zip_source_t *
+zip_source_filep_create(FILE *file, zip_uint64_t start, zip_int64_t length, zip_error_t *error) {
+    if (file == NULL || length < ZIP_LENGTH_UNCHECKED) {
+        zip_error_set(error, ZIP_ER_INVAL, 0);
+        return NULL;
+    }
+
+    return zip_source_file_common_new(NULL, file, start, length, NULL, &ops_stdio_named, NULL, error);
+}
+
 
 static zip_int64_t
 _zip_stdio_op_commit_write(zip_source_file_context_t *ctx) {
