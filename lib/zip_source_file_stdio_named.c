@@ -390,3 +390,39 @@ static FILE *_zip_fopen_close_on_exec(const char *name, bool writeable) {
     }
     return fp;
 }
+
+bool fstat(zip_source_file_context_t *ctx, zip_source_file_stat_t *st) {
+    struct stat sb;
+
+    int ret;
+
+    if (ctx->fname) {
+        ret = stat(ctx->fname, &sb);
+    }
+    else {
+        ret = fstat(fileno((FILE *)ctx->f), &sb);
+    }
+
+    if (ret < 0) {
+        if (errno == ENOENT) {
+            st->exists = false;
+            return true;
+        }
+        zip_error_set(&ctx->error, ZIP_ER_READ, errno);
+        return false;
+    }
+
+    st->size = (zip_uint64_t)sb.st_size;
+    st->mtime = sb.st_mtime;
+
+    st->regular_file = S_ISREG(sb.st_mode);
+    st->exists = true;
+
+    /* We're using UNIX file API, even on Windows; thus, we supply external file attributes with Unix values. */
+    /* TODO: This could be improved on Windows by providing Windows-specific file attributes */
+    ctx->attributes.valid = ZIP_FILE_ATTRIBUTES_HOST_SYSTEM | ZIP_FILE_ATTRIBUTES_EXTERNAL_FILE_ATTRIBUTES;
+    ctx->attributes.host_system = ZIP_OPSYS_UNIX;
+    ctx->attributes.external_file_attributes = (((zip_uint32_t)sb.st_mode) << 16) | ((sb.st_mode & S_IWUSR) ? 0 : 1);
+
+    return true;
+}
