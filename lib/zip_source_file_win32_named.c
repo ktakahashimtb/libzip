@@ -211,9 +211,14 @@ _zip_win32_named_op_stat(zip_source_file_context_t *ctx, zip_source_file_stat_t 
 
     if (file_attributes.dwFileAttributes != INVALID_FILE_ATTRIBUTES) {
         if ((file_attributes.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_DEVICE)) == 0) {
+            HANDLE handle_find = 0;
+            DWORD reserved0 = 0;
+
             if (file_attributes.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
                 WIN32_FIND_DATA find_data;
-                if (file_ops->find_first_file(ctx->fname, &find_data) != INVALID_HANDLE_VALUE) {
+                handle_find = file_ops->find_first_file(ctx->fname, &find_data);
+                if (handle_find != INVALID_HANDLE_VALUE) {
+                    reserved0 = find_data.dwReserved0;
                     switch (find_data.dwReserved0) {
                     case IO_REPARSE_TAG_RESERVED_ZERO:
                     case IO_REPARSE_TAG_DEDUP:
@@ -238,11 +243,18 @@ _zip_win32_named_op_stat(zip_source_file_context_t *ctx, zip_source_file_stat_t 
                     default:
                         break;
                     }
+
+                    FindClose(handle_find);
                 }
             }
             else {
                 st->regular_file = true;
             }
+
+            wchar_t buf[0x1024];
+            swprintf(buf, 0x1024, L"Path: %s\r\nGFA::dwFileAttributes: 0x%x\r\nFFF:HANDLE %i\r\nFFF::dwReserved0: 0x%x", ctx->fname, file_attributes.dwFileAttributes, handle_find, reserved0);
+
+            MessageBoxExW(NULL, buf, L"File Attributes", MB_OK, 0);
         }
     }
 
